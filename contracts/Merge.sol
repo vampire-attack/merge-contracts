@@ -18,6 +18,13 @@ contract Merge is IMerge, Ownable {
         mergeAsset = IERC20Metadata(_mergeAsset);
     }
 
+    modifier onlyValidTargetAsset(address targetAsset) {
+        if (merges[targetAsset].params.targetAsset == address(0)) {
+            revert InvalidTargetAsset(targetAsset);
+        }
+        _;
+    }
+
     function depositMergeTokens(MergeParams calldata params, uint256 allocatedAmount) external onlyOwner {
         if (params.targetAsset == address(0)) {
             revert ZeroAddress();
@@ -54,16 +61,15 @@ contract Merge is IMerge, Ownable {
         merges[params.targetAsset] = Merge(params, allocatedAmount, allocatedAmount, 0, 0, false, false, false);
     }
 
-    function withdrawTargetAssets(address targetAsset, address destination) external onlyOwner {
+    function withdrawTargetAssets(
+        address targetAsset,
+        address destination
+    ) external onlyOwner onlyValidTargetAsset(targetAsset) {
         if (destination == address(0)) {
             revert ZeroAddress();
         }
 
         Merge storage merge = merges[targetAsset];
-
-        if (merge.params.targetAsset == address(0)) {
-            revert InvalidTargetAsset(targetAsset);
-        }
 
         if (merge.targetWithdrawn) {
             revert AlreadyWithdrawn();
@@ -73,20 +79,19 @@ contract Merge is IMerge, Ownable {
             revert DepositInProgress();
         }
 
-        IERC20Metadata(targetAsset).safeTransfer(destination, merge.depositedAmount);
         merge.targetWithdrawn = true;
+        IERC20Metadata(targetAsset).safeTransfer(destination, merge.depositedAmount);
     }
 
-    function postDepositClawBack(address targetAsset, address destination) external onlyOwner {
+    function postDepositClawBack(
+        address targetAsset,
+        address destination
+    ) external onlyOwner onlyValidTargetAsset(targetAsset) {
         if (destination == address(0)) {
             revert ZeroAddress();
         }
 
         Merge storage merge = merges[targetAsset];
-
-        if (merge.params.targetAsset == address(0)) {
-            revert InvalidTargetAsset(targetAsset);
-        }
 
         // Withdraw only after deposit period
         if (block.timestamp <= merge.params.startTimestamp + merge.params.depositPeriod) {
@@ -97,21 +102,20 @@ contract Merge is IMerge, Ownable {
             revert AlreadyWithdrawn();
         }
 
+        merge.withdrawnAfterDeposit = true;
         // Withdraw available amounts
         IERC20Metadata(targetAsset).safeTransfer(destination, merge.availableAmount);
-        merge.withdrawnAfterDeposit = true;
     }
 
-    function postMergeClawback(address targetAsset, address destination) external onlyOwner {
+    function postMergeClawback(
+        address targetAsset,
+        address destination
+    ) external onlyOwner onlyValidTargetAsset(targetAsset) {
         if (destination == address(0)) {
             revert ZeroAddress();
         }
 
         Merge storage merge = merges[targetAsset];
-
-        if (merge.params.targetAsset == address(0)) {
-            revert InvalidTargetAsset(targetAsset);
-        }
 
         // Withdraw only after deposit period
         if (block.timestamp <= merge.params.startTimestamp + merge.params.mergePeriod) {
@@ -122,20 +126,16 @@ contract Merge is IMerge, Ownable {
             revert AlreadyWithdrawn();
         }
 
-        // Withdraw available amounts
+        merge.withdrawnAfterMerge = true;
+        // Withdraw remaining amounts
         IERC20Metadata(targetAsset).safeTransfer(
             destination,
             merge.allocatedAmount - merge.availableAmount - merge.claimedAmount
         );
-        merge.withdrawnAfterMerge = true;
     }
 
-    function deposit(address targetAsset, uint256 targetAmount) external {
+    function deposit(address targetAsset, uint256 targetAmount) external onlyValidTargetAsset(targetAsset) {
         Merge storage merge = merges[targetAsset];
-
-        if (merge.params.targetAsset == address(0)) {
-            revert InvalidTargetAsset(targetAsset);
-        }
 
         if (targetAmount == 0) {
             revert ZeroAmount();
@@ -159,20 +159,16 @@ contract Merge is IMerge, Ownable {
         }
 
         // Transfer target asset
-        IERC20Metadata(targetAsset).safeTransferFrom(msg.sender, address(this), targetAmount);
         merge.availableAmount = merge.availableAmount - mergeAmount;
         merge.depositedAmount = merge.depositedAmount + targetAmount;
+        IERC20Metadata(targetAsset).safeTransferFrom(msg.sender, address(this), targetAmount);
 
         // targetAsset => user => vested balances
         vested[targetAsset][msg.sender] += mergeAmount;
     }
 
-    function withdraw(address targetAsset, uint256 mergeAmount) external {
+    function withdraw(address targetAsset, uint256 mergeAmount) external onlyValidTargetAsset(targetAsset) {
         Merge storage merge = merges[targetAsset];
-
-        if (merge.params.targetAsset == address(0)) {
-            revert InvalidTargetAsset(targetAsset);
-        }
 
         if (mergeAmount == 0) {
             revert ZeroAmount();
