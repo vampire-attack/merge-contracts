@@ -2,11 +2,16 @@
 pragma solidity ^0.8.9;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IMerge} from "./interfaces/IMerge.sol";
 
-contract Merge is IMerge, Ownable {
+/**
+ * @title The contract handles multiple merges
+ */
+contract Merge is IMerge, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20Metadata;
 
     IERC20Metadata public mergeAsset; // VAMP token address
@@ -64,7 +69,7 @@ contract Merge is IMerge, Ownable {
     function withdrawTargetAssets(
         address targetAsset,
         address destination
-    ) external onlyOwner onlyValidTargetAsset(targetAsset) {
+    ) external onlyOwner onlyValidTargetAsset(targetAsset) nonReentrant {
         if (destination == address(0)) {
             revert ZeroAddress();
         }
@@ -86,7 +91,7 @@ contract Merge is IMerge, Ownable {
     function postDepositClawBack(
         address targetAsset,
         address destination
-    ) external onlyOwner onlyValidTargetAsset(targetAsset) {
+    ) external onlyOwner onlyValidTargetAsset(targetAsset) nonReentrant {
         if (destination == address(0)) {
             revert ZeroAddress();
         }
@@ -110,7 +115,7 @@ contract Merge is IMerge, Ownable {
     function postMergeClawback(
         address targetAsset,
         address destination
-    ) external onlyOwner onlyValidTargetAsset(targetAsset) {
+    ) external onlyOwner onlyValidTargetAsset(targetAsset) nonReentrant {
         if (destination == address(0)) {
             revert ZeroAddress();
         }
@@ -167,7 +172,10 @@ contract Merge is IMerge, Ownable {
         vested[targetAsset][msg.sender] += mergeAmount;
     }
 
-    function withdraw(address targetAsset, uint256 mergeAmount) external onlyValidTargetAsset(targetAsset) {
+    function withdraw(
+        address targetAsset,
+        uint256 mergeAmount
+    ) external onlyValidTargetAsset(targetAsset) nonReentrant {
         Merge storage merge = merges[targetAsset];
 
         if (mergeAmount == 0) {
@@ -205,7 +213,7 @@ contract Merge is IMerge, Ownable {
         uint256 currentTime,
         uint256 start,
         uint256 duration
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         if (currentTime < start) {
             return 0;
         } else if (currentTime >= start + duration) {
