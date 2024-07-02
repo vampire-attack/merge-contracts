@@ -167,7 +167,7 @@ contract Merge is IMerge, Ownable {
         vested[targetAsset][msg.sender] += mergeAmount;
     }
 
-    function withdraw(address targetAsset, uint256 mergeAmount) public {
+    function withdraw(address targetAsset, uint256 mergeAmount) external {
         Merge storage merge = merges[targetAsset];
 
         if (merge.params.targetAsset == address(0)) {
