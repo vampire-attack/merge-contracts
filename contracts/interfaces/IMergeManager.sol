@@ -46,8 +46,8 @@ interface IMergeManager {
     error MergeNotStarted();
     error MergeEnded();
 
-    function depositMergeTokens(MergeParams calldata params, uint256 allocatedAmount) external;
-    function withdrawTargetAssets(address targetAsset, address destination) external;
+    function depositMergeToken(MergeParams calldata params, uint256 allocatedAmount) external;
+    function withdrawTargetAsset(address targetAsset, address destination) external;
     function postDepositClawBack(address targetAsset, address destination) external;
     function postMergeClawback(address targetAsset, address destination) external;
     function deposit(address targetAsset, uint256 targetAmount) external;
