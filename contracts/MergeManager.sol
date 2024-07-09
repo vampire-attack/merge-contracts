@@ -15,6 +15,7 @@ contract MergeManager is IMergeManager, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20Metadata;
 
     IERC20Metadata public mergeAsset; // VAMP token address
+    address[] public targetAssets;
     mapping(address => Merge) public merges; // targetAsset => merge params
     mapping(address => mapping(address => uint256)) public vested; // targetAsset => user => vested balances
     mapping(address => mapping(address => uint256)) public released; // targetAsset => user => released balances
@@ -30,7 +31,11 @@ contract MergeManager is IMergeManager, Ownable, ReentrancyGuard {
         _;
     }
 
-    function depositMergeTokens(MergeParams calldata params, uint256 allocatedAmount) external onlyOwner {
+    function targetAssetsLength() external view returns (uint256) {
+        return targetAssets.length;
+    }
+
+    function depositMergeToken(MergeParams calldata params, uint256 allocatedAmount) external onlyOwner {
         if (params.targetAsset == address(0)) {
             revert ZeroAddress();
         }
@@ -64,9 +69,11 @@ contract MergeManager is IMergeManager, Ownable, ReentrancyGuard {
 
         // Save merge params
         merges[params.targetAsset] = Merge(params, allocatedAmount, allocatedAmount, 0, 0, false, false, false);
+
+        targetAssets.push(params.targetAsset);
     }
 
-    function withdrawTargetAssets(
+    function withdrawTargetAsset(
         address targetAsset,
         address destination
     ) external onlyOwner onlyValidTargetAsset(targetAsset) nonReentrant {
