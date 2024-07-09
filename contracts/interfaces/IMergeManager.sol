@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-interface IMerge {
+interface IMergeManager {
     struct MergeParams {
         address targetAsset; // The token to be merged
         uint256 swapRate; // ratio of merge:target in qty of tokens. Using 6 decimals
