@@ -1,22 +1,28 @@
-import { ethers } from "hardhat";
+import fs from "fs";
+import hre, { ethers } from "hardhat";
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
+  const network = hre.network.name as "mainnet" | "sepolia";
+  const vamp = await ethers.deployContract("Token", ["Vamp Token", "VAMP"]);
+  await vamp.waitForDeployment();
 
-  const lockedAmount = ethers.parseEther("0.001");
+  // Deploy test mock tokens
+  const target1 = await ethers.deployContract("Token", ["Target Asset 1", "TAR1"]);
+  await target1.waitForDeployment();
 
-  const lock = await ethers.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
+  const target2 = await ethers.deployContract("Token", ["Target Asset 2", "TAR2"]);
+  await target2.waitForDeployment();
 
-  await lock.waitForDeployment();
+  const vampAddress = await vamp.getAddress();
+  const mergeManager = await ethers.deployContract("MergeManager", [vampAddress]);
+  await mergeManager.waitForDeployment();
 
-  console.log(
-    `Lock with ${ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
-  );
+  const deployedContracts = {
+    vamp: vampAddress,
+    mergeManager: await mergeManager.getAddress(),
+  };
+
+  fs.writeFileSync(`./deployment-${network}.json`, JSON.stringify(deployedContracts));
 }
 
 // We recommend this pattern to be able to use async/await everywhere
